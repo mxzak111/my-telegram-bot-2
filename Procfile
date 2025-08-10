@@ -1,1 +1,1 @@
-worker: python polska.py
+worker: python polska1.py
