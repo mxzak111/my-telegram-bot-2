@@ -4,8 +4,16 @@ from aiogram import Bot, Dispatcher, types, F, Router
 from aiogram.types import FSInputFile, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+import os
+
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-router = Router()
+if not BOT_TOKEN:
+    print("❌ Ошибка: Токен не найден!")
+    print("Проверьте:")
+    print("1. Переменную TELEGRAM_BOT_TOKEN в Railway")
+    print("2. Файл .env (если тестируете локально)")
+    exit(1)
+
 
 
 def get_reply_keyboard():
