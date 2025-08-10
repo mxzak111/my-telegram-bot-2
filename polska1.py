@@ -4,11 +4,17 @@ from aiogram import Bot, Dispatcher, types, F, Router
 from aiogram.types import FSInputFile, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+import os
 
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+if not BOT_TOKEN:
+    print("❌ Ошибка: Токен не найден!")
+    print("Проверьте:")
+    print("1. Переменную TELEGRAM_BOT_TOKEN в Railway")
+    print("2. Файл .env (если тестируете локально)")
+    exit(1)
 
-BOT_TOKEN = "8327619980:AAFd-K0YeYT_VE6dzjfmAxpaxs6h-CKWAEo"
-
-
+router = Router()
 
 
 def get_reply_keyboard():
@@ -37,7 +43,7 @@ async def show_options(message: types.Message):
     keyboard = InlineKeyboardBuilder()
     keyboard.button(text="Канал", url="https://t.me/status_studentappl")
     keyboard.button(text="Менеджер", url="https://t.me/Status_Studenta3")
-    keyboard.button(text="Інстаграм", url="https://www.instagram.com/status_studenta_ua?igsh=bzN4MjFkeDYxYW81==")
+    keyboard.button(text="Інстаграм", url="https://www.instagram.com/status_studenta_ua?igsh=dW5tMHBxeGZjejBt==")
     keyboard.button(text="Відгуки", callback_data="reviews")
     keyboard.button(text="Інфо", callback_data="info")
     keyboard.button(text="Ціни", callback_data="prices")
@@ -90,7 +96,8 @@ async def info_callback(callback: types.CallbackQuery):
 – 250 зл за заświadczenie + легітимація
 – +17 зл за доставку
 
-Для замовлення пишіть @Status_Studenta3
+Для замовлення пишіть @Status_Studenta3 
+
 Ми працюємо для Вас
 """
 
