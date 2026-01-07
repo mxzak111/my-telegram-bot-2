@@ -1,10 +1,29 @@
 import asyncio
 import os
+import sqlite3
 from aiogram import Bot, Dispatcher, types, F, Router
 from aiogram.types import FSInputFile, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.filters import Command
 
-import os
+
+ADMIN_IDS = [5429733148]
+
+
+
+def init_db():
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+
+init_db()
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not BOT_TOKEN:
@@ -17,6 +36,32 @@ if not BOT_TOKEN:
 router = Router()
 
 
+def add_user_to_db(user_id: int):
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (user_id,))
+    conn.commit()
+    conn.close()
+
+
+def get_all_users():
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT user_id FROM users')
+    users = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return users
+
+
+def get_users_count():
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM users')
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count
+
+
 def get_reply_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text="Обрати опцію")]],
@@ -26,16 +71,50 @@ def get_reply_keyboard():
 
 @router.message(F.text == "/start")
 async def start_command(message: types.Message):
-    # Здесь можно добавить картинку при старте (раскомментировать если нужно)
-    # if os.path.exists("images/start.jpg"):
-    #     image = FSInputFile("images/start.jpg")
-    #     await message.answer_photo(image)
+    add_user_to_db(message.from_user.id)
 
     welcome_text = (
         "Вітаю! Цей бот допоможе вам отримати студентські документи в Польщі.\n\n"
         "Оберіть опцію нижче:"
     )
     await message.answer(welcome_text, reply_markup=get_reply_keyboard())
+
+
+@router.message(Command("broadcast"))
+async def broadcast_command(message: types.Message, bot: Bot):
+
+    if message.from_user.id not in ADMIN_IDS:
+        return
+
+
+    args = message.text.split(' ', 1)
+    if len(args) < 2:
+        users_count = get_users_count()
+        await message.answer(f"Использование: /broadcast <текст>\n\nВсего пользователей: {users_count}")
+        return
+
+    broadcast_text = args[1]
+    users = get_all_users()
+
+    if not users:
+        await message.answer("В базе данных нет пользователей")
+        return
+
+    await message.answer(f"Начинаю рассылку для {len(users)} пользователей...")
+
+    sent = 0
+    failed = 0
+
+    for user_id in users:
+        try:
+            await bot.send_message(user_id, broadcast_text)
+            sent += 1
+        except:
+            failed += 1
+
+        await asyncio.sleep(0.05)
+
+    await message.answer(f"Рассылка завершена\nУспешно: {sent}\nНе удалось: {failed}")
 
 
 @router.message(F.text == "Обрати опцію")
@@ -55,7 +134,6 @@ async def show_options(message: types.Message):
 async def info_callback(callback: types.CallbackQuery):
     image = FSInputFile("images/info.jpg") if os.path.exists("images/info.jpg") else None
 
-    # Часть 1 (будет в подписи к фото)
     part1 = """
 СКІЛЬКИ ЧАСУ ЗАЙМАЄ ВИГОТОВЛЕННЯ ДОКУМЕНТІВ І ТЕРМІН ЇХ ДІЇ?
 
@@ -68,7 +146,6 @@ async def info_callback(callback: types.CallbackQuery):
 Літній семестр: 01.02 - 31.08
 """
 
-    # Часть 2 (отдельное сообщение)
     part2 = """
 – Університети: документи дійсні на семестр
 Зимовий семестр: 01.10 - 28.02
@@ -77,7 +154,6 @@ async def info_callback(callback: types.CallbackQuery):
 Не важливо, чи замовили ви документи в листопаді або вересні, вони дійсні до кінця семестру.
 """
 
-    # Часть 3 (отдельное сообщение)
     part3 = """
 ЯК ВІДБУВАЄТЬСЯ ОПЛАТА?
 
@@ -85,7 +161,6 @@ async def info_callback(callback: types.CallbackQuery):
 Щоб переконатися в нашій чесності, ви можете ознайомитись з нашими відгуками 
 """
 
-    # Часть 4 (отдельное сообщение)
     part4 = """
 ЩО БУДЕ, ЯКЩО Я НЕ ЗАБЕРУ СВОЇ ДОКУМЕНТИ З ПАЧКОМАТУ InPost?
 
@@ -96,7 +171,7 @@ async def info_callback(callback: types.CallbackQuery):
 – 250 зл за заświadczenie + легітимація
 – +17 зл за доставку
 
-Для замовлення пишіть @Status_Studenta3 
+Для замовлення пишіть @Status_Studenta3  
 
 Ми працюємо для Вас
 """
